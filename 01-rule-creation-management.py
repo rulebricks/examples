@@ -7,7 +7,7 @@ import os
 # Ensure RULEBRICKS_API_KEY is set in a local .env file
 load_dotenv()
 
-def create_health_insurance_selector():
+def build_example_rule():
     # Initialize the rule
     rule = Rule()
 
@@ -77,7 +77,7 @@ def create_health_insurance_selector():
 
 if __name__ == "__main__":
     # Create and preview the rule's conditions...
-    rule = create_health_insurance_selector()
+    rule = build_example_rule()
     print(rule.to_table())
 
     # Export the rule to a .rbx file that can be imported into Rulebricks manually
