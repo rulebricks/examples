@@ -76,51 +76,65 @@ def create_health_insurance_selector():
     return rule
 
 if __name__ == "__main__":
-    # Create and preview the rule's conditions...
+    # Create an example rule...
     rule = create_health_insurance_selector()
-    print(rule.to_table())
 
-    # Export the rule to a .rbx file that can be imported into Rulebricks manually
-    # rule.export()
-
-    # Or, import the rule directly into your Rulebricks workspace
+    # Initialize the Rulebricks SDK and import the rule into our workspace
     rb.configure(
         api_key=os.getenv("RULEBRICKS_API_KEY") or "XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX" # Replace with your API key
     )
+    created_rule = rb.assets.import_rule(rule=rule, publish=True)
 
-    # Import the rule, but don't immediately publish it...
-    created_rule = rb.assets.import_rule(rule=rule, publish=False)
-
-    # The new rule should appear in your Rulebricks workspace if we list all rules
-    print(rb.assets.list_rules())
-
-    # The URL to edit the rule in the Rulebricks web app should work!
-    print(rule.get_editor_url())
-
-    # We can retrieve the rule data we just created using its returned ID
-    rule_json = rb.assets.export_rule(id=created_rule.id)
-
-    # Create a Rule object to represent it
-    # This is useful if you want to modify the rule using the SDK
-    located_rule = Rule.from_json(rule_json)
-
-    # Update the rule– but let's publish it this time
-    updated_rule = rb.assets.import_rule(rule=located_rule, publish=True)
-
-    # Let's try solving the rule with some test data!
-    test_data = {
-        "age": 25,
-        "income": 60000,
-        "chronic_conditions": True,
-        "deductible_preference": 750,
-        "medical_service_frequency": "monthly"
-    }
-    print(updated_rule)
-    test_data_solution = rb.rules.solve(
-        slug=updated_rule.slug,
-        request=test_data
+    # Let's make some changes to conditions inside this rule
+    # For example, let's look for the row in our decision table with the condition "age between 18 and 35"
+    # and change it to be "age between 18 and 30"
+    matched_conditions = created_rule.find_conditions(
+        age=created_rule.get_number_field("age").between(18, 35)
     )
-    print(test_data_solution)
+    print(matched_conditions)
+    matched_conditions[0].when(
+        age=created_rule.get_number_field("age").between(18, 30)
+    )
 
-    # Delete the rule
-    rb.assets.delete_rule(id=updated_rule.id)
+    # Let's try one more change, this time to the outcome of the rule
+    # Let's change the premium for when "age is greater than 60" to be $3000
+    # instead of the current $2500
+    matched_conditions = created_rule.find_conditions(
+        age=created_rule.get_number_field("age").greater_than(60)
+    )
+    matched_conditions[0].then(
+        estimated_premium=3000
+    )
+
+    # Let's preview our changes!
+    print(created_rule.to_table())
+
+    # We can also make changes to the rule's metadata and execution settings
+    # For example, let's rename the rule
+    created_rule.set_name("Health Insurance Plan Selector v2")
+
+    # We can move the rule into a folder we create on the fly
+    # But to do this particular action, we need to give the rule access
+    # to the client for our Rulebricks workspace using the set_workspace method
+    created_rule.set_workspace(rb)
+    created_rule.set_folder("Health Insurance Rules")
+
+    # We can turn on various data validation settings for this Rule
+    # To ensure that the rule only runs when all required fields are present
+    # and that the data types are correct before execution
+    created_rule.enable_schema_validation()
+    created_rule.require_all_properties()
+
+    # We can also progammatically override the rule's API slug!
+    # This is a powerful feature that allows you to create custom API endpoints
+    # If we're using the public cloud instance, we can now access this rule at:
+        # https://rulebricks.com/api/v1/solve/health-insurance-selector
+    # The only requirement is that these slugs are unique across all rules in your workspace
+    created_rule.set_alias("health-insurance-selector")
+
+    # Alright, that's enough changes for now!
+    # Let's import the updated rule back into our workspace
+    updated_rule = rb.assets.import_rule(rule=created_rule, publish=True)
+
+    # Check out the updated rule in your Rulebricks dashboard!
+    # https://rulebricks.com/dashboard
