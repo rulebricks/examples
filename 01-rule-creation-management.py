@@ -89,23 +89,18 @@ if __name__ == "__main__":
     )
 
     # Import the rule, but don't immediately publish it...
+    # It's important we use created_rule from now on, as it contains
+    # the latest version of the rule *after* importing into our workspace
     created_rule = rb.assets.import_rule(rule=rule, publish=False)
 
     # The new rule should appear in your Rulebricks workspace if we list all rules
     print(rb.assets.list_rules())
 
     # The URL to edit the rule in the Rulebricks web app should work!
-    print(rule.get_editor_url())
-
-    # We can retrieve the rule data we just created using its returned ID
-    rule_json = rb.assets.export_rule(id=created_rule.id)
-
-    # Create a Rule object to represent it
-    # This is useful if you want to modify the rule using the SDK
-    located_rule = Rule.from_json(rule_json)
+    print(created_rule.get_editor_url())
 
     # Update the rule– but let's publish it this time
-    updated_rule = rb.assets.import_rule(rule=located_rule, publish=True)
+    created_rule_v1 = rb.assets.import_rule(rule=created_rule, publish=True)
 
     # Let's try solving the rule with some test data!
     test_data = {
@@ -115,12 +110,12 @@ if __name__ == "__main__":
         "deductible_preference": 750,
         "medical_service_frequency": "monthly"
     }
-    print(updated_rule)
+    print(created_rule_v1)
     test_data_solution = rb.rules.solve(
-        slug=updated_rule.slug,
+        slug=created_rule_v1.slug,
         request=test_data
     )
     print(test_data_solution)
 
     # Delete the rule
-    rb.assets.delete_rule(id=updated_rule.id)
+    rb.assets.delete_rule(id=created_rule_v1.id)
