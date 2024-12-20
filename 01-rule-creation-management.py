@@ -88,19 +88,20 @@ if __name__ == "__main__":
         api_key=os.getenv("RULEBRICKS_API_KEY") or "XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX" # Replace with your API key
     )
 
-    # Import the rule, but don't immediately publish it...
-    # It's important we use created_rule from now on, as it contains
-    # the latest version of the rule *after* importing into our workspace
-    created_rule = rb.assets.import_rule(rule=rule, publish=False)
+    # Provide our configured workspace client to the Forge SDK
+    rule.set_workspace(rb)
+
+    # Push the rule to the workspace without publishing it...
+    rule.update()
 
     # The new rule should appear in your Rulebricks workspace if we list all rules
     print(rb.assets.list_rules())
 
     # The URL to edit the rule in the Rulebricks web app should work!
-    print(created_rule.get_editor_url())
+    print(rule.get_editor_url())
 
-    # Update the rule– but let's publish it this time
-    created_rule_v1 = rb.assets.import_rule(rule=created_rule, publish=True)
+    # Publish the rule to make it live
+    rule.publish()
 
     # Let's try solving the rule with some test data!
     test_data = {
@@ -110,12 +111,12 @@ if __name__ == "__main__":
         "deductible_preference": 750,
         "medical_service_frequency": "monthly"
     }
-    print(created_rule_v1)
+    print(rule)
     test_data_solution = rb.rules.solve(
-        slug=created_rule_v1.slug,
+        slug=rule.slug,
         request=test_data
     )
     print(test_data_solution)
 
     # Delete the rule
-    rb.assets.delete_rule(id=created_rule_v1.id)
+    rb.assets.delete_rule(id=rule.id)

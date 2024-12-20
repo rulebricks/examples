@@ -67,6 +67,7 @@ if __name__ == "__main__":
     rb.configure(
         api_key=os.getenv("RULEBRICKS_API_KEY") or "XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX" # Replace with your API key
     )
+    rule.set_workspace(rb)
 
     # This example, we're going to create some tests for our rule
     # Testing is a great way to ensure your rule behaves as expected
@@ -97,26 +98,28 @@ if __name__ == "__main__":
     # And let's add this test to our rule
     rule.add_test(test=test_1)
 
-    # Let's import the rule into our Rulebricks workspace
+    # Let's publish the rule in our Rulebricks workspace
     # This will work because our critical test passes
-    created_rule = rb.assets.import_rule(rule=rule, publish=True)
+    rule.publish()
+    print("Rule published successfully!")
 
     # Uh oh! Someone's messing with our rule...
     # They're changing the age range in the first condition row
-    matched_conditions = created_rule.find_conditions(
-        age=created_rule.get_number_field("age").between(18, 35)
+    matched_conditions = rule.find_conditions(
+        age=rule.get_number_field("age").between(18, 35)
     )
     matched_conditions[0].when(
-        age=created_rule.get_number_field("age").between(18, 24)
+        age=rule.get_number_field("age").between(18, 24)
     )
 
     # Let's see what happens when they try to publish this rule
+    print("Example error scenario:")
     try:
-        rb.assets.import_rule(rule=created_rule, publish=True)
+        rule.publish()
     except Exception as e:
         # They're not allowed to!
-        print("Failed to publish rule due to critical test failure")
         print(e)
 
     # Let's clean up our workspace
-    rb.assets.delete_rule(id=created_rule.id)
+    print("Cleaning up workspace...")
+    rb.assets.delete_rule(id=rule.id)

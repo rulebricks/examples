@@ -63,62 +63,66 @@ if __name__ == "__main__":
     # Create an example rule...
     rule = build_example_rule()
 
-    # Initialize the Rulebricks SDK and import the rule into our workspace
+    # Initialize the Rulebricks SDK and publish the rule in our workspace
     rb.configure(
         api_key=os.getenv("RULEBRICKS_API_KEY") or "XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX" # Replace with your API key
     )
-    created_rule = rb.assets.import_rule(rule=rule, publish=True)
+
+    # To push updates to our workspace using the Forge SDK, we need to use set_workspace
+    rule.set_workspace(rb)
+
+    # Import the rule into our cloud workspace and publish it
+    rule.publish()
 
     # Let's make some changes to conditions inside this rule
     # For example, let's look for the row in our decision table with the condition "age between 18 and 35"
     # and change it to be "age between 18 and 30"
-    matched_conditions = created_rule.find_conditions(
-        age=created_rule.get_number_field("age").between(18, 35)
+    matched_conditions = rule.find_conditions(
+        age=rule.get_number_field("age").between(18, 35)
     )
     print(matched_conditions)
     matched_conditions[0].when(
-        age=created_rule.get_number_field("age").between(18, 30)
+        age=rule.get_number_field("age").between(18, 30)
     )
 
     # Let's try one more change, this time to the outcome of the rule
     # Let's change the premium for when "age is greater than 60" to be $3000
     # instead of the current $2500
-    matched_conditions = created_rule.find_conditions(
-        age=created_rule.get_number_field("age").greater_than(60)
+    matched_conditions = rule.find_conditions(
+        age=rule.get_number_field("age").greater_than(60)
     )
     matched_conditions[0].then(
         estimated_premium=3000
     )
 
     # Let's preview our changes!
-    print(created_rule.to_table())
+    print(rule.to_table())
 
     # We can also make changes to the rule's metadata and execution settings
     # For example, let's rename the rule
-    created_rule.set_name("Health Insurance Plan Selector v2")
+    rule.set_name("Health Insurance Plan Selector v2")
 
     # We can move the rule into a folder we create on the fly
-    # But to do this particular action, we need to give the rule access
-    # to the client for our Rulebricks workspace using the set_workspace method
-    created_rule.set_workspace(rb)
-    created_rule.set_folder("Health Insurance Rules")
+    rule.set_folder("Health Insurance Rules", create_if_missing=True)
 
     # We can turn on various data validation settings for this Rule
     # To ensure that the rule only runs when all required fields are present
     # and that the data types are correct before execution
-    created_rule.enable_schema_validation()
-    created_rule.require_all_properties()
+    rule.enable_schema_validation()
+    rule.require_all_properties()
 
     # We can also progammatically override the rule's API slug!
     # This is a powerful feature that allows you to create custom API endpoints
     # If we're using the public cloud instance, we can now access this rule at:
         # https://rulebricks.com/api/v1/solve/health-insurance-selector
     # The only requirement is that these slugs are unique across all rules in your workspace
-    created_rule.set_alias("health-insurance-selector")
+    rule.set_alias("health-insurance-selector")
 
     # Alright, that's enough changes for now!
-    # Let's import the updated rule back into our workspace
-    updated_rule = rb.assets.import_rule(rule=created_rule, publish=True)
+    # Let's publish a new version of the updated rule
+    # But note that publish() is only required because we changed the rule's conditions and outcomes
+    # Otherwise, you can just use update() to update the rule's metadata
+    rule.publish()
 
     # Check out the updated rule in your Rulebricks dashboard!
     # https://rulebricks.com/dashboard

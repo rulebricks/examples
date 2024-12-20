@@ -84,9 +84,10 @@ if __name__ == "__main__":
     rb.configure(
         api_key=os.getenv("RULEBRICKS_API_KEY") or "XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX" # Replace with your API key
     )
+    rule.set_workspace(rb)
 
     # Let's toss this rule into our workspace
-    created_rule = rb.assets.import_rule(rule=rule, publish=True)
+    rule.publish()
 
     # Now let's solve the rule with varying example data
     request_1 = {
@@ -114,7 +115,7 @@ if __name__ == "__main__":
     start_time = time.time()
     for payload in payloads:
         outcome = rb.rules.solve(
-            slug=created_rule.slug,
+            slug=rule.slug,
             request=payload
         )
     end_time = time.time()
@@ -131,7 +132,7 @@ if __name__ == "__main__":
 
     # Let's query the decisions for the rule we just solved
     decisions = rb.decisions.query(
-        slug=created_rule.slug,
+        slug=rule.slug,
         limit=50 # Limit has to be between 50 and 1000 results
         # There are some other optional parameters you can use to filter the results
         # See https://rulebricks.com/docs/api-reference#tag/decisions/get/api/v1/decisions/query
@@ -145,4 +146,4 @@ if __name__ == "__main__":
     pp.pprint(decisions.data)
 
     # Clean up by deleting the rule
-    rb.assets.delete_rule(id=created_rule.id)
+    rb.assets.delete_rule(id=rule.id)

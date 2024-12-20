@@ -70,7 +70,8 @@ if __name__ == "__main__":
     print(rule.to_table())
 
     # Now let's create & publish the rule in our Rulebricks workspace
-    created_rule = rb.assets.import_rule(rule=rule, publish=True)
+    rule.set_workspace(rb)
+    rule.publish()
 
     # And let's solve the rule with some example data that matches the first condition
     request_under_1000_deductible = {
@@ -88,11 +89,11 @@ if __name__ == "__main__":
         "medical_service_frequency": "monthly"
     }
     outcome_under_1000_deductible = rb.rules.solve(
-        slug=created_rule.slug,
+        slug=rule.slug,
         request=request_under_1000_deductible
     )
     outcome_ppo = rb.rules.solve(
-        slug=created_rule.slug,
+        slug=rule.slug,
         request=request_ppo
     )
 
@@ -115,7 +116,7 @@ if __name__ == "__main__":
     # the data that just a moment ago would have recommended the PPO plan–
     # because the max deductible dynamic value has been increased
     outcome_equal_2000_deductible = rb.rules.solve(
-        slug=created_rule.slug,
+        slug=rule.slug,
         request=request_ppo
     )
     print("\nThe request's deductible preference of "
@@ -153,7 +154,7 @@ if __name__ == "__main__":
         print(e)
 
     # Let's clean up our workspace
-    rb.assets.delete_rule(id=created_rule.id)
+    rb.assets.delete_rule(id=rule.id)
 
     # And let's clean up our Dynamic Values
     rb.values.delete_dynamic_value(id=DynamicValues.get("max_deductible").id)
