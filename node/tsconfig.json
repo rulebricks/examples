@@ -1,0 +1,15 @@
+{
+  "compilerOptions": {
+    "extendedDiagnostics": true,
+    "strict": true,
+    "target": "ES6",
+    "module": "CommonJS",
+    "moduleResolution": "node",
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "declaration": true,
+    "allowJs": true
+  },
+  "include": ["*.ts", "**/*.ts"],
+  "exclude": ["node_modules"]
+}

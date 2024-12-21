@@ -1,0 +1,25 @@
+{
+  "name": "rulebricks-node-examples",
+  "version": "1.0.0",
+  "description": "Example usage of Rulebricks Node.js SDK",
+  "main": "01-rule-creation-management.ts",
+  "type": "commonjs",
+  "scripts": {
+    "start": "tsx 01-rule-creation-management.ts",
+    "01": "tsx 01-rule-creation-management.ts",
+    "02": "tsx 02-editing-existing-rules.ts",
+    "03": "tsx 03-using-dynamic-values.ts",
+    "04": "tsx 04-adding-tests-to-rules.ts"
+  },
+  "dependencies": {
+    "@rulebricks/sdk": "^1.0.0",
+    "dotenv": "^16.4.7",
+    "node-fetch": "^3.3.2"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2"
+  },
+  "license": "MIT"
+}
