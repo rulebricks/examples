@@ -1,9 +1,10 @@
-import { RulebricksApiClient, Rule } from "@rulebricks/sdk";
+import { Rulebricks, RulebricksClient, Rule } from "@rulebricks/sdk";
 import "dotenv/config";
 
 // Initialize the Rulebricks client
-const rb = new RulebricksApiClient({
-  environment: process.env.RULEBRICKS_ENVIRONMENT || "https://rulebricks.com",
+const rb = new RulebricksClient({
+  environment:
+    process.env.RULEBRICKS_ENVIRONMENT || "https://rulebricks.com/api/v1",
   apiKey:
     process.env.RULEBRICKS_API_KEY || "XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX",
 });
@@ -133,11 +134,13 @@ async function main() {
       deductible_preference: 750,
       medical_service_frequency: "monthly",
     };
-    const testDataSolution = await rb.rules.solve(rule.slug, testData, {});
+    const testDataSolution = await rb.rules.solve(rule.slug, testData);
     console.log(testDataSolution);
 
     // Delete the rule
-    await rb.assets.deleteRule({ id: rule.id }, {});
+    await rb.assets.rules.delete({
+      id: rule.id,
+    } satisfies Rulebricks.assets.DeleteRuleRequest);
   } catch (error) {
     console.error("Error:", error);
     process.exit(1);

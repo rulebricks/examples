@@ -1,7 +1,7 @@
+from rulebricks import Rulebricks
 from rulebricks.forge import Rule
 from dotenv import load_dotenv
 
-import rulebricks as rb
 import os
 
 # Ensure RULEBRICKS_API_KEY is set in a local .env file
@@ -64,7 +64,8 @@ if __name__ == "__main__":
     rule = build_example_rule()
 
     # Initialize the Rulebricks SDK and publish the rule in our workspace
-    rb.configure(
+    rb = Rulebricks(
+        base_url=os.getenv("RULEBRICKS_ENVIRONMENT") or "https://rulebricks.com/api/v1",
         api_key=os.getenv("RULEBRICKS_API_KEY") or "XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX" # Replace with your API key
     )
 

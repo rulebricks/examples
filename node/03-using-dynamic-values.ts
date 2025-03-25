@@ -1,14 +1,17 @@
 import {
-  RulebricksApiClient,
+  RulebricksClient,
   Rule,
   DynamicValues,
   DynamicValue,
 } from "@rulebricks/sdk";
+import { Rulebricks } from "@rulebricks/sdk";
+
 import "dotenv/config";
 
 // Initialize the Rulebricks client
-const rb = new RulebricksApiClient({
-  environment: process.env.RULEBRICKS_ENVIRONMENT || "https://rulebricks.com",
+const rb = new RulebricksClient({
+  environment:
+    process.env.RULEBRICKS_ENVIRONMENT || "https://rulebricks.com/api/v1",
   apiKey:
     process.env.RULEBRICKS_API_KEY || "XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX",
 });
@@ -60,12 +63,9 @@ async function main() {
   // If we wanted to, we could add a bunch of other values here as well
   // The .set operation is an upsert operation, so it will create the
   // Dynamic Value if it doesn't exist, and update it if it does
-  await rb.values.update(
-    {
-      max_deductible: 1000,
-    },
-    {},
-  );
+  await rb.values.update({
+    values: { max_deductible: 1000 },
+  } satisfies Rulebricks.UpdateValuesRequest);
 
   // Configure the Dynamic Values module with our Rulebricks client
   DynamicValues.configure(rb);
@@ -137,13 +137,12 @@ async function main() {
   console.log(requestPpo, " => ", outcomePpo);
 
   // The particularly powerful part is that we can update the Dynamic Value
-  // progammatically and see the rule's behavior change in real-time
-  await rb.values.update(
-    {
+  // programmatically and see the rule's behavior change in real-time
+  await rb.values.update({
+    values: {
       max_deductible: 2001,
     },
-    {},
-  );
+  } satisfies Rulebricks.UpdateValuesRequest);
 
   // Now the rule should recommend the first plan, even though we're passing in
   // the data that just a moment ago would have recommended the PPO plan–
@@ -164,12 +163,12 @@ async function main() {
   console.log("\nExample error scenarios:");
   // Let's see what happens if we try to delete the Dynamic Value
   try {
-    const values = (await rb.values.listDynamicValues(
-      {},
-      {},
-    )) as (typeof DynamicValue)[];
-    const maxDeductible = values.find((v) => v.name === "max_deductible");
-    if (maxDeductible) {
+    const values = await rb.values.list({ name: "max_deductible" });
+    const maxDeductibleId = values[0].id;
+    if (maxDeductibleId) {
+      await rb.values.delete({
+        id: maxDeductibleId,
+      } satisfies Rulebricks.ValuesDeleteRequest);
       // Note: The Node.js SDK doesn't support deleting dynamic values directly
       console.log("Cannot delete dynamic value that is being used by a rule!");
     }
@@ -204,19 +203,14 @@ async function main() {
 
   // Let's clean up our workspace
   // First delete any rules using the dynamic value
-  await rb.assets.deleteRule(
-    {
-      id: rule.id,
-    },
-    {},
-  );
+  await rb.assets.rules.delete({
+    id: rule.id,
+  } satisfies Rulebricks.assets.DeleteRuleRequest);
+
   // Then delete the dynamic value
-  await rb.values.deleteDynamicValue(
-    {
-      id: (await DynamicValues.get("max_deductible")).id,
-    },
-    {},
-  );
+  await rb.values.delete({
+    id: (await DynamicValues.get("max_deductible")).id,
+  } satisfies Rulebricks.ValuesDeleteRequest);
 }
 
 main();

@@ -1,7 +1,7 @@
+from rulebricks import Rulebricks
 from rulebricks.forge import Rule
 from dotenv import load_dotenv
 
-import rulebricks as rb
 import pprint
 import time
 import os
@@ -81,7 +81,8 @@ if __name__ == "__main__":
     rule = build_example_rule()
 
     # Initialize the Rulebricks SDK with the API key for our Rulebricks workspace
-    rb.configure(
+    rb = Rulebricks(
+        base_url=os.getenv("RULEBRICKS_ENVIRONMENT") or "https://rulebricks.com/api/v1",
         api_key=os.getenv("RULEBRICKS_API_KEY") or "XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX" # Replace with your API key
     )
     rule.set_workspace(rb)
@@ -146,4 +147,4 @@ if __name__ == "__main__":
     pp.pprint(decisions.data)
 
     # Clean up by deleting the rule
-    rb.assets.delete_rule(id=rule.id)
+    rb.assets.rules.delete(id=rule.id)

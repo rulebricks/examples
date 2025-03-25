@@ -1,9 +1,10 @@
+from rulebricks import Rulebricks
+from rulebricks.forge import Rule
+
 from random import choice, randint
 from time import time
-from rulebricks.forge import Rule
 from dotenv import load_dotenv
 
-import rulebricks as rb
 import os
 
 # Ensure RULEBRICKS_API_KEY is set in a local .env file
@@ -109,7 +110,8 @@ if __name__ == "__main__":
     # rule.export()
 
     # Or, import the rule directly into your Rulebricks workspace
-    rb.configure(
+    rb = Rulebricks(
+        base_url=os.getenv("RULEBRICKS_ENVIRONMENT") or "https://rulebricks.com/api/v1",
         api_key=os.getenv("RULEBRICKS_API_KEY") or "XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX" # Replace with your API key
     )
 
@@ -164,4 +166,4 @@ if __name__ == "__main__":
     print("Avg time per rule (batch):", (batch_end_time - batch_start_time) / num_test_cases_batch, "seconds")
 
     # Delete the rule
-    rb.assets.delete_rule(id=rule.id)
+    rb.assets.rules.delete(id=rule.id)

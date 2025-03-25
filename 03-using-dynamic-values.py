@@ -1,10 +1,10 @@
+from rulebricks import Rulebricks
 from rulebricks.errors.bad_request_error import BadRequestError
 from rulebricks.forge.types.values import TypeMismatchError
 from rulebricks.forge import Rule, DynamicValues
 from dotenv import load_dotenv
 from time import sleep
 
-import rulebricks as rb
 import os
 
 # Ensure RULEBRICKS_API_KEY is set in a local .env file
@@ -12,8 +12,9 @@ load_dotenv()
 
 if __name__ == "__main__":
     # Initialize the Rulebricks SDK with the API key for our Rulebricks workspace
-    rb.configure(
-        api_key=os.getenv("RULEBRICKS_API_KEY") or "XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX"
+    rb = Rulebricks(
+        base_url=os.getenv("RULEBRICKS_ENVIRONMENT") or "https://rulebricks.com/api/v1",
+        api_key=os.getenv("RULEBRICKS_API_KEY") or "XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX" # Replace with your API key
     )
 
     # Scaffolding an example rule...
@@ -33,14 +34,11 @@ if __name__ == "__main__":
     # Let's say we have a Dynamic Value that stores the maximum deductible amount for a health insurance plan
     # We can reference this Dynamic Value in our rule to ensure our rule is always up-to-date
 
-    # First, let's configure our Dynamic Values client with our Rulebricks workspace
-    DynamicValues.configure(rb)
-
     # We might not have any Dynamic Values created yet, so let's create it
     # If we wanted to, we could add a bunch of other values here as well
     # The .set operation is an upsert operation, so it will create the
     # Dynamic Value if it doesn't exist, and update it if it does
-    DynamicValues.set({
+    rb.values.update(values={
         "max_deductible": 1000
     })
     sleep(5)
@@ -108,7 +106,7 @@ if __name__ == "__main__":
     # using our simple Dynamic Values API
     #
     # Our SDK just makes it easy to do it here
-    DynamicValues.set({
+    rb.values.update(values={
         "max_deductible": 2001
     })
 
@@ -128,7 +126,9 @@ if __name__ == "__main__":
     print("\nExample error scenarios:")
     # Let's see what happens if we try to delete the Dynamic Value
     try:
-        rb.values.delete_dynamic_value(id=DynamicValues.get("max_deductible").id)
+        target_id = rb.values.list(name="max_deductible")[0].id
+        if target_id:
+            rb.values.delete(id=target_id)
     except BadRequestError as e:
         # We can't delete a Dynamic Value that is being used by a rule!
         # This makes sure your rules won't be broken by accidental deletions
@@ -154,7 +154,7 @@ if __name__ == "__main__":
         print(e)
 
     # Let's clean up our workspace
-    rb.assets.delete_rule(id=rule.id)
+    rb.assets.rules.delete(id=rule.id)
 
     # And let's clean up our Dynamic Values
-    rb.values.delete_dynamic_value(id=DynamicValues.get("max_deductible").id)
+    rb.values.delete(id=DynamicValues.get("max_deductible").id)

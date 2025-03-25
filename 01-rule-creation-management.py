@@ -1,7 +1,7 @@
+from rulebricks import Rulebricks
 from rulebricks.forge import Rule
 from dotenv import load_dotenv
 
-import rulebricks as rb
 import os
 
 # Ensure RULEBRICKS_API_KEY is set in a local .env file
@@ -84,7 +84,8 @@ if __name__ == "__main__":
     # rule.export()
 
     # Or, import the rule directly into your Rulebricks workspace
-    rb.configure(
+    rb = Rulebricks(
+        base_url=os.getenv("RULEBRICKS_ENVIRONMENT") or "https://rulebricks.com/api/v1",
         api_key=os.getenv("RULEBRICKS_API_KEY") or "XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX" # Replace with your API key
     )
 
@@ -95,7 +96,7 @@ if __name__ == "__main__":
     rule.update()
 
     # The new rule should appear in your Rulebricks workspace if we list all rules
-    print(rb.assets.list_rules())
+    print(rb.assets.rules.list())
 
     # The URL to edit the rule in the Rulebricks web app should work!
     print(rule.get_editor_url())
@@ -119,4 +120,4 @@ if __name__ == "__main__":
     print(test_data_solution)
 
     # Delete the rule
-    rb.assets.delete_rule(id=rule.id)
+    rb.assets.rules.delete(id=rule.id)

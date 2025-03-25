@@ -1,9 +1,10 @@
-import { RulebricksApiClient, Rule } from "@rulebricks/sdk";
+import { RulebricksClient, Rule } from "@rulebricks/sdk";
 import "dotenv/config";
 
 // Initialize the Rulebricks client
-const rb = new RulebricksApiClient({
-  environment: process.env.RULEBRICKS_ENVIRONMENT || "https://rulebricks.com",
+const rb = new RulebricksClient({
+  environment:
+    process.env.RULEBRICKS_ENVIRONMENT || "https://rulebricks.com/api/v1",
   apiKey:
     process.env.RULEBRICKS_API_KEY || "XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX",
 });
