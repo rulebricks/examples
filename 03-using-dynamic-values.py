@@ -16,6 +16,7 @@ if __name__ == "__main__":
         base_url=os.getenv("RULEBRICKS_ENVIRONMENT") or "https://rulebricks.com/api/v1",
         api_key=os.getenv("RULEBRICKS_API_KEY") or "XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX" # Replace with your API key
     )
+    DynamicValues.configure(rb)
 
     # Scaffolding an example rule...
     rule = Rule()
