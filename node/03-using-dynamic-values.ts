@@ -1,10 +1,5 @@
-import {
-  RulebricksClient,
-  Rule,
-  DynamicValues,
-  DynamicValue,
-} from "@rulebricks/sdk";
-import { Rulebricks } from "@rulebricks/sdk";
+import { DynamicValues, Rule, RulebricksClient } from "@rulebricks/sdk";
+import type { Rulebricks } from "@rulebricks/sdk";
 
 import "dotenv/config";
 
@@ -153,10 +148,7 @@ async function main() {
     {},
   );
   console.log(
-    "\nThe request's deductible preference of " +
-      `${requestPpo.deductible_preference} is now ` +
-      "less than the new max deductible of 2001, " +
-      "so the rule should now recommend the HSA plan.",
+    `\nThe request's deductible preference of ${requestPpo.deductible_preference} is now less than the new max deductible of 2001, so the rule should now recommend the HSA plan.`,
   );
   console.log(requestPpo, " => ", outcomeEqual2000Deductible);
 

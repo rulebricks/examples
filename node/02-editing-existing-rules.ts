@@ -1,4 +1,4 @@
-import { RulebricksClient, Rule } from "@rulebricks/sdk";
+import { Rule, RulebricksClient } from "@rulebricks/sdk";
 import "dotenv/config";
 
 // Initialize the Rulebricks client

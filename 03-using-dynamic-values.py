@@ -14,20 +14,30 @@ if __name__ == "__main__":
     # Initialize the Rulebricks SDK with the API key for our Rulebricks workspace
     rb = Rulebricks(
         base_url=os.getenv("RULEBRICKS_ENVIRONMENT") or "https://rulebricks.com/api/v1",
-        api_key=os.getenv("RULEBRICKS_API_KEY") or "XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX" # Replace with your API key
+        api_key=os.getenv("RULEBRICKS_API_KEY")
+        or "XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX",  # Replace with your API key
     )
     DynamicValues.configure(rb)
 
     # Scaffolding an example rule...
     rule = Rule()
-    rule.set_name("Health Insurance Account Selector") \
-        .set_description("Assists individuals in selecting the most suitable health insurance account option based on their healthcare needs, financial situation, and preferences.")
+    rule.set_name("Health Insurance Account Selector").set_description(
+        "Assists individuals in selecting the most suitable health insurance account option based on their healthcare needs, financial situation, and preferences."
+    )
     age = rule.add_number_field("age", "Age of the individual", 0)
     income = rule.add_number_field("income", "Annual income of the individual", 0)
-    chronic = rule.add_boolean_field("chronic_conditions", "Whether the individual has chronic conditions", False)
-    deductible = rule.add_number_field("deductible_preference", "Preferred deductible amount", 0)
-    frequency = rule.add_string_field("medical_service_frequency", "Frequency of medical service needs", "")
-    rule.add_string_response("recommended_plan", "Recommended health insurance plan", "")
+    chronic = rule.add_boolean_field(
+        "chronic_conditions", "Whether the individual has chronic conditions", False
+    )
+    deductible = rule.add_number_field(
+        "deductible_preference", "Preferred deductible amount", 0
+    )
+    frequency = rule.add_string_field(
+        "medical_service_frequency", "Frequency of medical service needs", ""
+    )
+    rule.add_string_response(
+        "recommended_plan", "Recommended health insurance plan", ""
+    )
     rule.add_number_response("estimated_premium", "Estimated monthly premium", 0)
 
     # In this example, we're going to reference a Dynamic Value in our rule
@@ -39,9 +49,7 @@ if __name__ == "__main__":
     # If we wanted to, we could add a bunch of other values here as well
     # The .set operation is an upsert operation, so it will create the
     # Dynamic Value if it doesn't exist, and update it if it does
-    rb.values.update(values={
-        "max_deductible": 1000
-    })
+    rb.values.update(values={"max_deductible": 1000})
     sleep(5)
 
     # Now we can reference the Dynamic Value in our rule
@@ -49,21 +57,17 @@ if __name__ == "__main__":
         age=age.between(18, 35),
         income=income.between(50000, 75000),
         chronic_conditions=chronic.equals(True),
-        deductible_preference=deductible.between(500, DynamicValues.get("max_deductible")),
-        medical_service_frequency=frequency.equals("monthly")
-    ).then(
-        recommended_plan="HSA",
-        estimated_premium=2000
-    )
+        deductible_preference=deductible.between(
+            500, DynamicValues.get("max_deductible")
+        ),
+        medical_service_frequency=frequency.equals("monthly"),
+    ).then(recommended_plan="HSA", estimated_premium=2000)
     rule.when(
-        deductible_preference=deductible.greater_than(DynamicValues.get("max_deductible"))
-    ).then(
-        recommended_plan="PPO",
-        estimated_premium=300
-    )
-    rule.when().then(
-        recommended_plan="Unknown"
-    )
+        deductible_preference=deductible.greater_than(
+            DynamicValues.get("max_deductible")
+        )
+    ).then(recommended_plan="PPO", estimated_premium=300)
+    rule.when().then(recommended_plan="Unknown")
 
     # Let's see what this looks like in a table
     print(rule.to_table())
@@ -78,23 +82,19 @@ if __name__ == "__main__":
         "income": 60000,
         "chronic_conditions": True,
         "deductible_preference": 750,
-        "medical_service_frequency": "monthly"
+        "medical_service_frequency": "monthly",
     }
     request_ppo = {
         "age": 25,
         "income": 60000,
         "chronic_conditions": True,
         "deductible_preference": 2000,
-        "medical_service_frequency": "monthly"
+        "medical_service_frequency": "monthly",
     }
     outcome_under_1000_deductible = rb.rules.solve(
-        slug=rule.slug,
-        request=request_under_1000_deductible
+        slug=rule.slug, request=request_under_1000_deductible
     )
-    outcome_ppo = rb.rules.solve(
-        slug=rule.slug,
-        request=request_ppo
-    )
+    outcome_ppo = rb.rules.solve(slug=rule.slug, request=request_ppo)
 
     # We can observe that our dynamic value is being used
     # and respected by the rule
@@ -107,21 +107,18 @@ if __name__ == "__main__":
     # using our simple Dynamic Values API
     #
     # Our SDK just makes it easy to do it here
-    rb.values.update(values={
-        "max_deductible": 2001
-    })
+    rb.values.update(values={"max_deductible": 2001})
 
     # Now the rule should recommend the first plan, even though we're passing in
     # the data that just a moment ago would have recommended the PPO plan–
     # because the max deductible dynamic value has been increased
-    outcome_equal_2000_deductible = rb.rules.solve(
-        slug=rule.slug,
-        request=request_ppo
+    outcome_equal_2000_deductible = rb.rules.solve(slug=rule.slug, request=request_ppo)
+    print(
+        "\nThe request's deductible preference of "
+        f"{request_ppo['deductible_preference']} is now "
+        "less than the new max deductible of 2001, "
+        "so the rule should now recommend the HSA plan."
     )
-    print("\nThe request's deductible preference of "
-          f"{request_ppo['deductible_preference']} is now "
-          "less than the new max deductible of 2001, "
-          "so the rule should now recommend the HSA plan.")
     print(request_ppo, " => ", outcome_equal_2000_deductible)
 
     print("\nExample error scenarios:")
@@ -144,11 +141,10 @@ if __name__ == "__main__":
             chronic_conditions=chronic.equals(False),
             deductible_preference=deductible.between(500, 1000),
             # This will raise an error! Our Dynamic Value is a number and we're comparing it to a string
-            medical_service_frequency=frequency.equals(DynamicValues.get("max_deductible"))
-        ).then(
-            recommended_plan="HSA",
-            estimated_premium=2000
-        )
+            medical_service_frequency=frequency.equals(
+                DynamicValues.get("max_deductible")
+            ),
+        ).then(recommended_plan="HSA", estimated_premium=2000)
     except TypeMismatchError as e:
         # The SDK will catch this error for you
         # and let you know what went wrong

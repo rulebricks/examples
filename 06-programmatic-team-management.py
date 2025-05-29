@@ -10,7 +10,8 @@ if __name__ == "__main__":
     # Initialize the Rulebricks SDK with the API key for our Rulebricks workspace
     rb = Rulebricks(
         base_url=os.getenv("RULEBRICKS_ENVIRONMENT") or "https://rulebricks.com/api/v1",
-        api_key=os.getenv("RULEBRICKS_API_KEY") or "XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX" # Replace with your API key
+        api_key=os.getenv("RULEBRICKS_API_KEY")
+        or "XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX",  # Replace with your API key
     )
 
     # This example is NOT intended to be runnable
@@ -25,14 +26,13 @@ if __name__ == "__main__":
     rb.users.invite(
         email="john@acme.co",
         role="custom-viewer-role",
-        access_groups=["Production", "Marketing"]
+        access_groups=["Production", "Marketing"],
     )
 
     # But let's say we want to give John a "fresh" Rulebricks workspace
     # We can do this by creating a new access group for John and his team
     rb.users.groups.create(
-        name="John's Team",
-        description="A new team for John and his colleagues"
+        name="John's Team", description="A new team for John and his colleagues"
     )
 
     # Now we can add John to the new group
