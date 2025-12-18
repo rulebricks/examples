@@ -12,7 +12,7 @@
     "04": "tsx 04-adding-tests-to-rules.ts"
   },
   "dependencies": {
-    "@rulebricks/sdk": "1.4.0",
+    "@rulebricks/sdk": "^1.5.2",
     "dotenv": "^16.4.7",
     "node-fetch": "^3.3.2"
   },
