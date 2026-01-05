@@ -126,16 +126,18 @@ if __name__ == "__main__":
 
     # Logs usually take a few seconds to be indexed and available for querying
     # So we'll wait a bit before querying
-    print("Waiting for logs to be indexed... (15s)")
-    time.sleep(15)
+    print("Waiting for logs to be indexed... (5s)")
+    time.sleep(5)
 
     # Let's query the decisions for the rule we just solved
     decisions = rb.decisions.query(
-        slug=rule.slug,
-        limit=50,  # Limit has to be between 50 and 1000 results
+        limit=3, 
         # There are some other optional parameters you can use to filter the results
+        # We have a lightweight query language to filter results by request/response data
         # See https://rulebricks.com/docs/api-reference#tag/decisions/get/api/v1/decisions/query
     )
+
+    print(decisions)
 
     # You're free to do whatever you want with the decisions data
     # Here, we'll just print it out, so you can see what it looks like
