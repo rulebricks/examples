@@ -119,12 +119,11 @@ async function main() {
     deductible_preference: 2000,
     medical_service_frequency: "monthly",
   };
-  const outcomeUnder1000Deductible = await rb.rules.solve(
-    rule.slug,
-    requestUnder1000Deductible,
-    {},
-  );
-  const outcomePpo = await rb.rules.solve(rule.slug, requestPpo, {});
+  const outcomeUnder1000Deductible = await rb.rules.solve({
+    slug: rule.slug,
+    body: requestUnder1000Deductible,
+  });
+  const outcomePpo = await rb.rules.solve({ slug: rule.slug, body: requestPpo });
 
   // We can observe that our dynamic value is being used
   // and respected by the rule
@@ -142,11 +141,10 @@ async function main() {
   // Now the rule should recommend the first plan, even though we're passing in
   // the data that just a moment ago would have recommended the PPO plan–
   // because the max deductible dynamic value has been increased
-  const outcomeEqual2000Deductible = await rb.rules.solve(
-    rule.slug,
-    requestPpo,
-    {},
-  );
+  const outcomeEqual2000Deductible = await rb.rules.solve({
+    slug: rule.slug,
+    body: requestPpo,
+  });
   console.log(
     `\nThe request's deductible preference of ${requestPpo.deductible_preference} is now less than the new max deductible of 2001, so the rule should now recommend the HSA plan.`,
   );
@@ -160,7 +158,7 @@ async function main() {
     if (maxDeductibleId) {
       await rb.values.delete({
         id: maxDeductibleId,
-      } satisfies Rulebricks.ValuesDeleteRequest);
+      } satisfies Rulebricks.DeleteValuesRequest);
       // Note: The Node.js SDK doesn't support deleting dynamic values directly
       console.log("Cannot delete dynamic value that is being used by a rule!");
     }
@@ -202,7 +200,7 @@ async function main() {
   // Then delete the dynamic value
   await rb.values.delete({
     id: (await DynamicValues.get("max_deductible")).id,
-  } satisfies Rulebricks.ValuesDeleteRequest);
+  } satisfies Rulebricks.DeleteValuesRequest);
 }
 
 main();

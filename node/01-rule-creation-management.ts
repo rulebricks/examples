@@ -134,7 +134,7 @@ async function main() {
       deductible_preference: 750,
       medical_service_frequency: "monthly",
     };
-    const testDataSolution = await rb.rules.solve(rule.slug, testData);
+    const testDataSolution = await rb.rules.solve({ slug: rule.slug, body: testData });
     console.log(testDataSolution);
 
     // Delete the rule
