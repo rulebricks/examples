@@ -1,7 +1,7 @@
 from rulebricks import Rulebricks
 from rulebricks.errors.bad_request_error import BadRequestError
 from rulebricks.forge.types.values import TypeMismatchError
-from rulebricks.forge import Rule, DynamicValues
+from rulebricks.forge import Rule, Vocabulary
 from dotenv import load_dotenv
 from time import sleep
 
@@ -17,7 +17,12 @@ if __name__ == "__main__":
         api_key=os.getenv("RULEBRICKS_API_KEY")
         or "XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX",  # Replace with your API key
     )
-    DynamicValues.configure(rb)
+    Vocabulary.configure(rb)
+    example_user_groups = [
+        group.strip()
+        for group in os.getenv("RULEBRICKS_USER_GROUPS", "").split(",")
+        if group.strip()
+    ]
 
     # Scaffolding an example rule...
     rule = Rule()
@@ -40,31 +45,41 @@ if __name__ == "__main__":
     )
     rule.add_number_response("estimated_premium", "Estimated monthly premium", 0)
 
-    # In this example, we're going to reference a Dynamic Value in our rule
-    # Read about Dynamic Values here: https://rulebricks.com/docs/advanced-features/values-and-functions
-    # Let's say we have a Dynamic Value that stores the maximum deductible amount for a health insurance plan
-    # We can reference this Dynamic Value in our rule to ensure our rule is always up-to-date
+    # In the app, these values appear under "Vocabulary".
+    # In this example, we're going to reference vocabulary values in our rule.
+    # Read about vocabulary here: https://rulebricks.com/docs/advanced-features/values-and-functions
+    # Let's say we have a vocabulary value that stores the maximum deductible amount for a health insurance plan
+    # We can reference this vocabulary value in our rule to ensure our rule is always up-to-date
 
-    # We might not have any Dynamic Values created yet, so let's create it
-    # If we wanted to, we could add a bunch of other values here as well
-    # The .set operation is an upsert operation, so it will create the
-    # Dynamic Value if it doesn't exist, and update it if it does
-    rb.values.update(values={"max_deductible": 1000})
+    # We might not have any vocabulary values created yet, so let's create them
+    # If we wanted to, we could add a bunch of other vocabulary values here as well
+    # The .set operation is an upsert operation, so it will create vocabulary values
+    # if they don't exist, and update them if they do. user_groups is optional;
+    # when provided, it scopes visibility to those workspace user groups.
+    Vocabulary.set(
+        {
+            "max_deductible": 1000,
+            "allowed_service_frequencies": ["monthly", "quarterly"],
+        },
+        user_groups=example_user_groups,
+    )
     sleep(5)
 
-    # Now we can reference the Dynamic Value in our rule
+    # Now we can reference the vocabulary value in our rule
     rule.when(
         age=age.between(18, 35),
         income=income.between(50000, 75000),
         chronic_conditions=chronic.equals(True),
         deductible_preference=deductible.between(
-            500, DynamicValues.get("max_deductible")
+            500, Vocabulary.get("max_deductible")
         ),
-        medical_service_frequency=frequency.equals("monthly"),
+        medical_service_frequency=frequency.is_included_in(
+            Vocabulary.get("allowed_service_frequencies")
+        ),
     ).then(recommended_plan="HSA", estimated_premium=2000)
     rule.when(
         deductible_preference=deductible.greater_than(
-            DynamicValues.get("max_deductible")
+            Vocabulary.get("max_deductible")
         )
     ).then(recommended_plan="PPO", estimated_premium=300)
     rule.when().then(recommended_plan="Unknown")
@@ -75,6 +90,12 @@ if __name__ == "__main__":
     # Now let's create & publish the rule in our Rulebricks workspace
     rule.set_workspace(rb)
     rule.publish()
+
+    # Usage metadata shows which rules currently reference each vocabulary value.
+    print("\nVocabulary values with usage information:")
+    for value in rb.values.list(include="usage"):
+        if value.name in {"max_deductible", "allowed_service_frequencies"}:
+            print(value.name, "is used by", len(value.usages or []), "rule(s)")
 
     # And let's solve the rule with some example data that matches the first condition
     request_under_1000_deductible = {
@@ -96,22 +117,22 @@ if __name__ == "__main__":
     )
     outcome_ppo = rb.rules.solve(slug=rule.slug, request=request_ppo)
 
-    # We can observe that our dynamic value is being used
+    # We can observe that our vocabulary value is being used
     # and respected by the rule
     print(request_under_1000_deductible, " => ", outcome_under_1000_deductible)
     print(request_ppo, " => ", outcome_ppo)
 
-    # The particularly powerful part is that we can update the Dynamic Value
+    # The particularly powerful part is that we can update the Vocabulary value
     # progammatically and see the rule's behavior change in real-time
     # You can call this dynamically anywhere in your application
-    # using our simple Dynamic Values API
+    # using our simple vocabulary API
     #
     # Our SDK just makes it easy to do it here
-    rb.values.update(values={"max_deductible": 2001})
+    rb.values.update(values={"max_deductible": 2001}, user_groups=example_user_groups)
 
     # Now the rule should recommend the first plan, even though we're passing in
     # the data that just a moment ago would have recommended the PPO plan–
-    # because the max deductible dynamic value has been increased
+    # because the max deductible vocabulary value has been increased
     outcome_equal_2000_deductible = rb.rules.solve(slug=rule.slug, request=request_ppo)
     print(
         "\nThe request's deductible preference of "
@@ -122,17 +143,17 @@ if __name__ == "__main__":
     print(request_ppo, " => ", outcome_equal_2000_deductible)
 
     print("\nExample error scenarios:")
-    # Let's see what happens if we try to delete the Dynamic Value
+    # Let's see what happens if we try to delete the Vocabulary value
     try:
         target_id = rb.values.list(name="max_deductible")[0].id
         if target_id:
             rb.values.delete(id=target_id)
     except BadRequestError as e:
-        # We can't delete a Dynamic Value that is being used by a rule!
+        # We can't delete a Vocabulary value that is being used by a rule!
         # This makes sure your rules won't be broken by accidental deletions
         print(e)
 
-    # Let's see what happens if we try to use the Dynamic Value
+    # Let's see what happens if we try to use the Vocabulary value
     # somewhere where its type doesn't match
     try:
         rule.when(
@@ -140,9 +161,9 @@ if __name__ == "__main__":
             income=income.between(50000, 75000),
             chronic_conditions=chronic.equals(False),
             deductible_preference=deductible.between(500, 1000),
-            # This will raise an error! Our Dynamic Value is a number and we're comparing it to a string
+            # This will raise an error! Our Vocabulary value is a number and we're comparing it to a string
             medical_service_frequency=frequency.equals(
-                DynamicValues.get("max_deductible")
+                Vocabulary.get("max_deductible")
             ),
         ).then(recommended_plan="HSA", estimated_premium=2000)
     except TypeMismatchError as e:
@@ -153,5 +174,6 @@ if __name__ == "__main__":
     # Let's clean up our workspace
     rb.assets.rules.delete(id=rule.id)
 
-    # And let's clean up our Dynamic Values
-    rb.values.delete(id=DynamicValues.get("max_deductible").id)
+    # And let's clean up our Vocabulary
+    for value_name in ["max_deductible", "allowed_service_frequencies"]:
+        rb.values.delete(id=Vocabulary.get(value_name).id)

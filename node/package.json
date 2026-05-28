@@ -8,11 +8,12 @@
     "start": "tsx 01-rule-creation-management.ts",
     "01": "tsx 01-rule-creation-management.ts",
     "02": "tsx 02-editing-existing-rules.ts",
-    "03": "tsx 03-using-dynamic-values.ts",
-    "04": "tsx 04-adding-tests-to-rules.ts"
+    "03": "tsx 03-using-vocabulary.ts",
+    "04": "tsx 04-adding-tests-to-rules.ts",
+    "05": "tsx 05-rule-creation-management.ts"
   },
   "dependencies": {
-    "@rulebricks/sdk": "^2.5.0",
+    "@rulebricks/sdk": "^2.5.9",
     "dotenv": "^16.4.7",
     "node-fetch": "^3.3.2"
   },

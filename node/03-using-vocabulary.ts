@@ -1,4 +1,4 @@
-import { DynamicValues, Rule, RulebricksClient } from "@rulebricks/sdk";
+import { Vocabulary, Rule, RulebricksClient } from "@rulebricks/sdk";
 import type { Rulebricks } from "@rulebricks/sdk";
 
 import "dotenv/config";
@@ -10,6 +10,10 @@ const rb = new RulebricksClient({
   apiKey:
     process.env.RULEBRICKS_API_KEY || "XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX",
 });
+const exampleUserGroups = (process.env.RULEBRICKS_USER_GROUPS || "")
+  .split(",")
+  .map((group) => group.trim())
+  .filter(Boolean);
 
 async function main() {
   // Scaffolding an example rule...
@@ -49,23 +53,30 @@ async function main() {
   );
   rule.addNumberResponse("estimated_premium", "Estimated monthly premium", 0);
 
-  // In this example, we're going to reference a Dynamic Value in our rule
-  // Read about Dynamic Values here: https://rulebricks.com/docs/advanced-features/values-and-functions
-  // Let's say we have a Dynamic Value that stores the maximum deductible amount for a health insurance plan
-  // We can reference this Dynamic Value in our rule to ensure our rule is always up-to-date
+  // In the app, these values appear under "Vocabulary". The generated API still
+  // exposes them through rb.values.*, and rule JSON stores them as globalValue refs.
+  // In this example, we're going to reference vocabulary values in our rule.
+  // Read about vocabulary here: https://rulebricks.com/docs/advanced-features/values-and-functions
+  // Let's say we have a vocabulary value that stores the maximum deductible amount for a health insurance plan
+  // We can reference this vocabulary value in our rule to ensure our rule is always up-to-date
 
-  // We might not have any Dynamic Values created yet, so let's create it
-  // If we wanted to, we could add a bunch of other values here as well
-  // The .set operation is an upsert operation, so it will create the
-  // Dynamic Value if it doesn't exist, and update it if it does
+  // We might not have any vocabulary values created yet, so let's create them
+  // If we wanted to, we could add a bunch of other vocabulary values here as well
+  // The update operation is an upsert operation, so it will create vocabulary values
+  // if they don't exist, and update them if they do. user_groups is optional;
+  // when provided, it scopes visibility to those workspace user groups.
   await rb.values.update({
-    values: { max_deductible: 1000 },
+    values: {
+      max_deductible: 1000,
+      allowed_service_frequencies: ["monthly", "quarterly"],
+    },
+    user_groups: exampleUserGroups,
   } satisfies Rulebricks.UpdateValuesRequest);
 
-  // Configure the Dynamic Values module with our Rulebricks client
-  DynamicValues.configure(rb);
+  // Configure the Vocabulary module with our Rulebricks client
+  Vocabulary.configure(rb);
 
-  // Now we can reference the Dynamic Value in our rule
+  // Now we can reference the vocabulary value in our rule
   rule
     .when({
       age: age.between(18, 35),
@@ -73,9 +84,11 @@ async function main() {
       chronic_conditions: chronic.equals(true),
       deductible_preference: deductible.between(
         500,
-        await DynamicValues.get("max_deductible"),
+        await Vocabulary.get("max_deductible"),
       ),
-      medical_service_frequency: frequency.equals("monthly"),
+      medical_service_frequency: frequency.is_included_in(
+        await Vocabulary.get("allowed_service_frequencies"),
+      ),
     })
     .then({
       recommended_plan: "HSA",
@@ -85,7 +98,7 @@ async function main() {
   rule
     .when({
       deductible_preference: deductible.greater_than(
-        await DynamicValues.get("max_deductible"),
+        await Vocabulary.get("max_deductible"),
       ),
     })
     .then({
@@ -103,6 +116,18 @@ async function main() {
   // Now let's create & publish the rule in our Rulebricks workspace
   rule.setWorkspace(rb);
   await rule.publish();
+
+  // Usage metadata shows which rules currently reference each vocabulary value.
+  console.log("\nVocabulary values with usage information:");
+  const valuesWithUsage = await rb.values.list({ include: "usage" });
+  for (const value of valuesWithUsage) {
+    if (
+      value.name === "max_deductible" ||
+      value.name === "allowed_service_frequencies"
+    ) {
+      console.log(value.name, "is used by", value.usages?.length || 0, "rule(s)");
+    }
+  }
 
   // And let's solve the rule with some example data that matches the first condition
   const requestUnder1000Deductible = {
@@ -125,22 +150,23 @@ async function main() {
   });
   const outcomePpo = await rb.rules.solve({ slug: rule.slug, body: requestPpo });
 
-  // We can observe that our dynamic value is being used
+  // We can observe that our vocabulary value is being used
   // and respected by the rule
   console.log(requestUnder1000Deductible, " => ", outcomeUnder1000Deductible);
   console.log(requestPpo, " => ", outcomePpo);
 
-  // The particularly powerful part is that we can update the Dynamic Value
+  // The particularly powerful part is that we can update the vocabulary value
   // programmatically and see the rule's behavior change in real-time
   await rb.values.update({
     values: {
       max_deductible: 2001,
     },
+    user_groups: exampleUserGroups,
   } satisfies Rulebricks.UpdateValuesRequest);
 
   // Now the rule should recommend the first plan, even though we're passing in
   // the data that just a moment ago would have recommended the PPO plan–
-  // because the max deductible dynamic value has been increased
+  // because the max deductible vocabulary value has been increased
   const outcomeEqual2000Deductible = await rb.rules.solve({
     slug: rule.slug,
     body: requestPpo,
@@ -151,7 +177,7 @@ async function main() {
   console.log(requestPpo, " => ", outcomeEqual2000Deductible);
 
   console.log("\nExample error scenarios:");
-  // Let's see what happens if we try to delete the Dynamic Value
+  // Let's see what happens if we try to delete the vocabulary value
   try {
     const values = await rb.values.list({ name: "max_deductible" });
     const maxDeductibleId = values[0].id;
@@ -159,16 +185,16 @@ async function main() {
       await rb.values.delete({
         id: maxDeductibleId,
       } satisfies Rulebricks.DeleteValuesRequest);
-      // Note: The Node.js SDK doesn't support deleting dynamic values directly
-      console.log("Cannot delete dynamic value that is being used by a rule!");
+      // Note: The Node.js SDK doesn't support deleting vocabulary values directly
+      console.log("Cannot delete vocabulary value that is being used by a rule!");
     }
   } catch (e) {
-    // We can't delete a Dynamic Value that is being used by a rule!
+    // We can't delete a vocabulary value that is being used by a rule!
     // This makes sure your rules won't be broken by accidental deletions
     console.log(e);
   }
 
-  // Let's see what happens if we try to use the Dynamic Value
+  // Let's see what happens if we try to use the vocabulary value
   // somewhere where its type doesn't match
   try {
     rule
@@ -178,7 +204,7 @@ async function main() {
         chronic_conditions: chronic.equals(true),
         deductible_preference: deductible.between(500, 1000),
         medical_service_frequency: frequency.equals(
-          await DynamicValues.get("max_deductible"),
+          await Vocabulary.get("max_deductible"),
         ),
       })
       .then({
@@ -192,15 +218,20 @@ async function main() {
   }
 
   // Let's clean up our workspace
-  // First delete any rules using the dynamic value
+  // First delete any rules using the vocabulary value
   await rb.assets.rules.delete({
     id: rule.id,
   } satisfies Rulebricks.assets.DeleteRuleRequest);
 
-  // Then delete the dynamic value
-  await rb.values.delete({
-    id: (await DynamicValues.get("max_deductible")).id,
-  } satisfies Rulebricks.DeleteValuesRequest);
+  // Then delete the vocabulary values
+  for (const valueName of [
+    "max_deductible",
+    "allowed_service_frequencies",
+  ]) {
+    await rb.values.delete({
+      id: (await Vocabulary.get(valueName)).id,
+    } satisfies Rulebricks.DeleteValuesRequest);
+  }
 }
 
 main();

@@ -16,9 +16,9 @@ This example creates a new rule, adds conditions and actions to it, and then sol
 
 This example demonstrates how to retrieve an existing rule, query specific condition rows inside it, edit those conditions, and publish a new version of the rule.
 
-- [Example 03: Using Dynamic Values](03-using-dynamic-values.py)
+- [Example 03: Using Vocabulary](03-using-vocabulary.py)
 
-Dynamic Values in Rulebricks allow you to use variables in your rules that are resolved at runtime. This example demonstrates how to define dynamic values and reference them while programmatically building rules.
+Vocabulary in Rulebricks lets you define reusable business values that your rules resolve at runtime. This example demonstrates how to define vocabulary values and reference them while programmatically building rules.
 
 - [Example 04: Adding Tests To Rules](04-adding-tests-to-rules.py)
 
