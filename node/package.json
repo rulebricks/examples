@@ -13,7 +13,7 @@
     "05": "tsx 05-rule-creation-management.ts"
   },
   "dependencies": {
-    "@rulebricks/sdk": "^2.5.9",
+    "@rulebricks/sdk": "^2.6.0",
     "dotenv": "^16.4.7",
     "node-fetch": "^3.3.2"
   },

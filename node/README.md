@@ -5,11 +5,13 @@ This directory contains basic examples demonstrating usage of the Rulebricks Nod
 ## Setup
 
 1. Install dependencies:
+
 ```bash
-yarn
+npm install
 ```
 
 2. Create a `.env` file:
+
 ```bash
 cp .env.example .env
 ```
@@ -19,14 +21,16 @@ cp .env.example .env
 ## Running Examples
 
 To run the first example:
+
 ```bash
-yarn start
+npm start
 ```
 
 To run any specific example, use any of the following shortcuts:
+
 ```bash
-yarn 01
-yarn 02
-yarn 03
+npm run 01
+npm run 02
+npm run 03
 ...
 ```
