@@ -112,7 +112,8 @@ if __name__ == "__main__":
     # Let's see what happens when they try to publish this rule
     print("Example error scenario:")
     try:
-        rule.publish()
+        # This publish is expected to fail, so skip automatic retries
+        rule.publish(request_options={"max_retries": 0})
     except Exception as e:
         # They're not allowed to!
         print(e)

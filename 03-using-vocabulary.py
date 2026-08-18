@@ -18,11 +18,6 @@ if __name__ == "__main__":
         or "XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX",  # Replace with your API key
     )
     Vocabulary.configure(rb)
-    example_user_groups = [
-        group.strip()
-        for group in os.getenv("RULEBRICKS_USER_GROUPS", "").split(",")
-        if group.strip()
-    ]
 
     # Scaffolding an example rule...
     rule = Rule()
@@ -54,14 +49,12 @@ if __name__ == "__main__":
     # We might not have any vocabulary values created yet, so let's create them
     # If we wanted to, we could add a bunch of other vocabulary values here as well
     # The .set operation is an upsert operation, so it will create vocabulary values
-    # if they don't exist, and update them if they do. user_groups is optional;
-    # when provided, it scopes visibility to those workspace user groups.
+    # if they don't exist, and update them if they do
     Vocabulary.set(
         {
             "max_deductible": 1000,
             "allowed_service_frequencies": ["monthly", "quarterly"],
-        },
-        user_groups=example_user_groups,
+        }
     )
     sleep(5)
 
@@ -122,36 +115,57 @@ if __name__ == "__main__":
     print(request_under_1000_deductible, " => ", outcome_under_1000_deductible)
     print(request_ppo, " => ", outcome_ppo)
 
-    # The particularly powerful part is that we can update the Vocabulary value
-    # progammatically and see the rule's behavior change in real-time
-    # You can call this dynamically anywhere in your application
-    # using our simple vocabulary API
-    #
-    # Our SDK just makes it easy to do it here
-    rb.values.update(values={"max_deductible": 2001}, user_groups=example_user_groups)
+    # We can update the Vocabulary value programmatically at any time,
+    # anywhere in your application, using our simple vocabulary API
+    rb.values.update(values={"max_deductible": 2001})
 
-    # Now the rule should recommend the first plan, even though we're passing in
-    # the data that just a moment ago would have recommended the PPO plan–
-    # because the max deductible vocabulary value has been increased
-    outcome_equal_2000_deductible = rb.rules.solve(slug=rule.slug, request=request_ppo)
+    # Published rules, however, are pinned to the vocabulary they were
+    # published with– every published version behaves exactly the same for
+    # its entire lifetime, no matter how the vocabulary changes afterwards.
+    # Our rule's published version still sees max_deductible = 1000,
+    # so this request still recommends the PPO plan
+    outcome_pinned_version = rb.rules.solve(slug=rule.slug, version="1", request=request_ppo)
     print(
-        "\nThe request's deductible preference of "
-        f"{request_ppo['deductible_preference']} is now "
-        "less than the new max deductible of 2001, "
-        "so the rule should now recommend the HSA plan."
+        "\nEven though max_deductible is now 2001, the published version "
+        "is pinned to the vocabulary it was published with, "
+        "so it still recommends the PPO plan."
     )
-    print(request_ppo, " => ", outcome_equal_2000_deductible)
+    print(request_ppo, " => ", outcome_pinned_version)
+
+    # To pick up the new vocabulary, publish a new version of the rule
+    rule.publish()
+    sleep(5)  # Give the newly published version a moment to propagate
+
+    # The latest version sees max_deductible = 2001, so the same request's
+    # deductible preference of 2000 now falls under the max– and the rule
+    # recommends the HSA plan
+    outcome_new_version = rb.rules.solve(slug=rule.slug, request=request_ppo)
+    print(
+        "\nAfter publishing a new version, the request's deductible "
+        f"preference of {request_ppo['deductible_preference']} is under "
+        "the new max deductible of 2001, "
+        "so the latest version recommends the HSA plan."
+    )
+    print(request_ppo, " => ", outcome_new_version)
+
+    outcome_v1 = rb.rules.solve(slug=rule.slug, version="1", request=request_ppo)
+    outcome_v2 = rb.rules.solve(slug=rule.slug, version="latest", request=request_ppo)
+
+    print("\nSolving specific published versions:")
+    print(f"{rule.slug}/1 (old vocabulary) => ", outcome_v1)
+    print(f"{rule.slug}/latest (new vocabulary) => ", outcome_v2)
 
     print("\nExample error scenarios:")
     # Let's see what happens if we try to delete the Vocabulary value
     try:
         target_id = rb.values.list(name="max_deductible")[0].id
         if target_id:
-            rb.values.delete(id=target_id)
+            # This delete is expected to fail, so skip automatic retries
+            rb.values.delete(id=target_id, request_options={"max_retries": 0})
     except BadRequestError as e:
         # We can't delete a Vocabulary value that is being used by a rule!
         # This makes sure your rules won't be broken by accidental deletions
-        print(e)
+        print(e.body.error)
 
     # Let's see what happens if we try to use the Vocabulary value
     # somewhere where its type doesn't match

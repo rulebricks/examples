@@ -26,7 +26,7 @@ if __name__ == "__main__":
     rb.users.invite(
         email="john@acme.co",
         role="custom-viewer-role",
-        access_groups=["Production", "Marketing"],
+        user_groups=["Production", "Marketing"],
     )
 
     # But let's say we want to give John a "fresh" Rulebricks workspace
@@ -41,7 +41,7 @@ if __name__ == "__main__":
     rb.users.invite(
         email="john@acme.co",
         role="custom-role-id",
-        access_groups=["John's Team"] # Name should match the name of the group
+        user_groups=["John's Team"] # Name should match the name of the group
     )
     """
 

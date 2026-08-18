@@ -154,10 +154,7 @@ async function main() {
   rule.enableSchemaValidation();
   rule.requireAllProperties();
 
-  // We can also progammatically override the rule's API slug!
-  // This is a powerful feature that allows you to create custom API endpoints
-  // If we're using the public cloud instance, we can now access this rule at:
-  // https://rulebricks.com/api/v1/solve/health-insurance-selector
+  // We can also progammatically override the rule's API slug
   // The only requirement is that these slugs are unique across all rules in your workspace
   rule.id = "4a8fb624-7dbb-44db-8b7d-5bc3e7017a76";
 
@@ -167,13 +164,9 @@ async function main() {
   // Let's publish a new version of the updated rule
   // But note that publish() is only required because we changed the rule's conditions and outcomes
   // Otherwise, you can just use update() to update the rule's metadata
-  await rb.assets.rules.push({
-    rule: {
-      ...(rule.toDict() as any),
-      _publish: true,
-      history: undefined,
-    },
-  });
+  await rule.publish();
+  console.log("Rule published successfully!");
+  
   // Check out the updated rule in your Rulebricks dashboard!
   // https://rulebricks.com/dashboard
 }

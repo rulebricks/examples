@@ -113,6 +113,16 @@ async function main() {
   // To push updates to our workspace using the Forge SDK, we need to use setWorkspace
   rule.setWorkspace(rb);
 
+  // We can also programmatically override the rule's API slug!
+  // This is a powerful feature that allows you to create custom API endpoints
+  // If we're using the public cloud instance, we can now access this rule at:
+  // https://rulebricks.com/api/v1/solve/health-insurance-selector
+  // The only requirement is that these slugs are unique across all rules in your workspace
+  // Note: the slug must be chosen *before* the rule is first published–
+  // every published version stays addressable at its slug forever,
+  // so a published rule's slug can never change
+  await rule.setAlias("health-insurance-selector");
+
   // Publish the rule to the cloud workspace
   await rule.publish();
 
@@ -153,13 +163,6 @@ async function main() {
   // and that the data types are correct before execution
   rule.enableSchemaValidation();
   rule.requireAllProperties();
-
-  // We can also progammatically override the rule's API slug!
-  // This is a powerful feature that allows you to create custom API endpoints
-  // If we're using the public cloud instance, we can now access this rule at:
-  // https://rulebricks.com/api/v1/solve/health-insurance-selector
-  // The only requirement is that these slugs are unique across all rules in your workspace
-  await rule.setAlias("health-insurance-selector");
 
   // Alright, that's enough changes for now!
   // Let's publish a new version of the updated rule

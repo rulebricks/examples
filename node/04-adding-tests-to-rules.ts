@@ -124,7 +124,8 @@ async function main() {
   // Let's see what happens when they try to publish this rule
   console.log("Example error scenario:");
   try {
-    await rule.publish();
+    // This publish is expected to fail, so skip automatic retries
+    await rule.publish({ maxRetries: 0 });
   } catch (e) {
     // They're not allowed to!
     console.log(e);

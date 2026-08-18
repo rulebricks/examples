@@ -10,11 +10,6 @@ const rb = new RulebricksClient({
   apiKey:
     process.env.RULEBRICKS_API_KEY || "XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX",
 });
-const exampleUserGroups = (process.env.RULEBRICKS_USER_GROUPS || "")
-  .split(",")
-  .map((group) => group.trim())
-  .filter(Boolean);
-
 async function main() {
   // Scaffolding an example rule...
   const rule = new Rule();
@@ -63,14 +58,12 @@ async function main() {
   // We might not have any vocabulary values created yet, so let's create them
   // If we wanted to, we could add a bunch of other vocabulary values here as well
   // The update operation is an upsert operation, so it will create vocabulary values
-  // if they don't exist, and update them if they do. user_groups is optional;
-  // when provided, it scopes visibility to those workspace user groups.
+  // if they don't exist, and update them if they do
   await rb.values.update({
     values: {
       max_deductible: 1000,
       allowed_service_frequencies: ["monthly", "quarterly"],
     },
-    user_groups: exampleUserGroups,
   } satisfies Rulebricks.UpdateValuesRequest);
 
   // Configure the Vocabulary module with our Rulebricks client
@@ -119,8 +112,14 @@ async function main() {
 
   // Usage metadata shows which rules currently reference each vocabulary value.
   console.log("\nVocabulary values with usage information:");
+
+  // Without a limit/cursor, small catalogs return a plain array
+  // Otherwise a { data, next_cursor } envelope is returned.
   const valuesWithUsage = await rb.values.list({ include: "usage" });
-  for (const value of valuesWithUsage) {
+  const usageEntries = Array.isArray(valuesWithUsage)
+    ? valuesWithUsage
+    : valuesWithUsage.data;
+  for (const value of usageEntries) {
     if (
       value.name === "max_deductible" ||
       value.name === "allowed_service_frequencies"
@@ -155,37 +154,75 @@ async function main() {
   console.log(requestUnder1000Deductible, " => ", outcomeUnder1000Deductible);
   console.log(requestPpo, " => ", outcomePpo);
 
-  // The particularly powerful part is that we can update the vocabulary value
-  // programmatically and see the rule's behavior change in real-time
+  // We can update the vocabulary value programmatically at any time,
+  // anywhere in your application, using our simple vocabulary API
   await rb.values.update({
     values: {
       max_deductible: 2001,
     },
-    user_groups: exampleUserGroups,
   } satisfies Rulebricks.UpdateValuesRequest);
 
-  // Now the rule should recommend the first plan, even though we're passing in
-  // the data that just a moment ago would have recommended the PPO plan–
-  // because the max deductible vocabulary value has been increased
-  const outcomeEqual2000Deductible = await rb.rules.solve({
+  // Published rules, however, are pinned to the vocabulary they were
+  // published with– every published version behaves exactly the same for
+  // its entire lifetime, no matter how the vocabulary changes afterwards.
+  // Our rule's published version still sees max_deductible = 1000,
+  // so this request still recommends the PPO plan
+  const outcomePinnedVersion = await rb.rules.solve({
     slug: rule.slug,
     body: requestPpo,
   });
   console.log(
-    `\nThe request's deductible preference of ${requestPpo.deductible_preference} is now less than the new max deductible of 2001, so the rule should now recommend the HSA plan.`,
+    "\nEven though max_deductible is now 2001, the published version is pinned to the vocabulary it was published with, so it still recommends the PPO plan.",
   );
-  console.log(requestPpo, " => ", outcomeEqual2000Deductible);
+  console.log(requestPpo, " => ", outcomePinnedVersion);
+
+  // To pick up the new vocabulary, publish a new version of the rule
+  await rule.publish();
+  // Give the newly published version a moment to propagate
+  await new Promise((resolve) => setTimeout(resolve, 5000));
+
+  // The latest version sees max_deductible = 2001, so the same request's
+  // deductible preference of 2000 now falls under the max– and the rule
+  // recommends the HSA plan
+  const outcomeNewVersion = await rb.rules.solve({
+    slug: rule.slug,
+    body: requestPpo,
+  });
+  console.log(
+    `\nAfter publishing a new version, the request's deductible preference of ${requestPpo.deductible_preference} is under the new max deductible of 2001, so the latest version recommends the HSA plan.`,
+  );
+  console.log(requestPpo, " => ", outcomeNewVersion);
+
+  // Every published version also stays addressable: append /<version>
+  // to the slug to target it directly, while the bare slug always
+  // solves the latest published version
+  const outcomeV1 = await rb.rules.solve({
+    slug: rule.slug,
+    version: "1",
+    body: requestPpo,
+  });
+  const outcomeV2 = await rb.rules.solve({
+    slug: rule.slug,
+    body: requestPpo,
+  });
+  console.log("\nSolving specific published versions:");
+  console.log(`${rule.slug}/1 (old vocabulary) => `, outcomeV1);
+  console.log(`${rule.slug}/latest (new vocabulary) => `, outcomeV2);
 
   console.log("\nExample error scenarios:");
   // Let's see what happens if we try to delete the vocabulary value
   try {
     const values = await rb.values.list({ name: "max_deductible" });
-    const maxDeductibleId = values[0].id;
+    const matches = Array.isArray(values) ? values : values.data;
+    const maxDeductibleId = matches[0].id;
     if (maxDeductibleId) {
-      await rb.values.delete({
-        id: maxDeductibleId,
-      } satisfies Rulebricks.DeleteValuesRequest);
-      // Note: The Node.js SDK doesn't support deleting vocabulary values directly
+      // This delete is expected to fail, so skip automatic retries
+      await rb.values.delete(
+        {
+          id: maxDeductibleId,
+        } satisfies Rulebricks.DeleteValuesRequest,
+        { maxRetries: 0 },
+      );
       console.log("Cannot delete vocabulary value that is being used by a rule!");
     }
   } catch (e) {
