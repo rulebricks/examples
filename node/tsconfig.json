@@ -4,7 +4,6 @@
     "strict": true,
     "target": "ES6",
     "module": "CommonJS",
-    "moduleResolution": "node",
     "esModuleInterop": true,
     "skipLibCheck": true,
     "declaration": true,
