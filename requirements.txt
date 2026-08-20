@@ -1,1 +1,1 @@
-rulebricks==2.6.2
+rulebricks==2.6.3

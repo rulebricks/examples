@@ -7,10 +7,33 @@ from time import sleep
 
 import os
 
-# Ensure RULEBRICKS_API_KEY is set in a local .env file
-load_dotenv()
+
+def iter_vocabulary_values(client, **filters):
+    """Yield values from either legacy arrays or every paginated page."""
+    cursor = None
+    seen_cursors = set()
+    while True:
+        response = client.values.list(limit=1000, cursor=cursor, **filters)
+        if isinstance(response, list):
+            values = response
+            next_cursor = None
+        else:
+            values = getattr(response, "data", None) or []
+            next_cursor = getattr(response, "next_cursor", None)
+
+        yield from values
+        if not next_cursor:
+            break
+        if next_cursor in seen_cursors:
+            break
+        seen_cursors.add(next_cursor)
+        cursor = next_cursor
+
 
 if __name__ == "__main__":
+    # Ensure RULEBRICKS_API_KEY is set in a local .env file
+    load_dotenv()
+
     # Initialize the Rulebricks SDK with the API key for our Rulebricks workspace
     rb = Rulebricks(
         base_url=os.getenv("RULEBRICKS_ENVIRONMENT") or "https://rulebricks.com/api/v1",
@@ -86,7 +109,7 @@ if __name__ == "__main__":
 
     # Usage metadata shows which rules currently reference each vocabulary value.
     print("\nVocabulary values with usage information:")
-    for value in rb.values.list(include="usage"):
+    for value in iter_vocabulary_values(rb, include="usage"):
         if value.name in {"max_deductible", "allowed_service_frequencies"}:
             print(value.name, "is used by", len(value.usages or []), "rule(s)")
 
@@ -158,7 +181,15 @@ if __name__ == "__main__":
     print("\nExample error scenarios:")
     # Let's see what happens if we try to delete the Vocabulary value
     try:
-        target_id = rb.values.list(name="max_deductible")[0].id
+        target = next(
+            (
+                value
+                for value in iter_vocabulary_values(rb, name="max_deductible")
+                if value.name == "max_deductible"
+            ),
+            None,
+        )
+        target_id = target.id if target else None
         if target_id:
             # This delete is expected to fail, so skip automatic retries
             rb.values.delete(id=target_id, request_options={"max_retries": 0})
