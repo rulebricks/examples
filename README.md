@@ -4,9 +4,23 @@
 
 This repository contains helpful examples and starter kits for using Rulebricks in your applications.
 
+### Setup
+
+For Python, create a virtual environment, install `requirements.txt`, copy
+`.env.sample` to `.env`, and add your API key:
+
+```bash
+python -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+cp .env.sample .env
+```
+
+Node.js versions of examples 01-05 live in [`node/`](node/README.md).
+
 ### Examples
 
-Examples 01-08 are simple examples that demonstrate how to use the Rulebricks SDK in various scenarios.
+These Python examples demonstrate common Rulebricks SDK workflows.
 
 - [Example 01: Rule Creation & Management](01-rule-creation-management.py)
 
@@ -24,7 +38,6 @@ Vocabulary in Rulebricks lets you define reusable business values that your rule
 
 Rulebricks allows you to add tests to your rules to ensure that they always function as expected for every new published version. This example demonstrates how to add tests to a rule, how to enable continuous testing, and what happens when a critical test fails.
 
-- [Example 05: Bulk Rule Administration](05-bulk-rule-administration.py)
 - [Example 06: Programmatic Team Management](06-programmatic-team-management.py)
 
 Learn how to invite new users, assign roles, create user (access) groups, and manage team permissions programmatically.

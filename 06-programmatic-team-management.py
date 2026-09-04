@@ -20,9 +20,9 @@ if __name__ == "__main__":
     # It's just a demonstration of how you can programmatically manage teams in Rulebricks
 
     # Invite a new team member to your workspace
-    # Role must be the Role ID, not the label
+    # Role must be a system or custom Role ID, not its display label
     # If fields are unspecified, assume the user will be invited with full access
-    # System role ids are "developer", and "editor"
+    # System Role IDs are "admin", "editor", and "developer"
     rb.users.invite(
         email="john@acme.co",
         role="custom-viewer-role",

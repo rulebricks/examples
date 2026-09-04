@@ -131,7 +131,8 @@ if __name__ == "__main__":
 
     # Let's query the decisions for the rule we just solved
     decisions = rb.decisions.query(
-        limit=3, 
+        rules=rule.slug,
+        limit=3,
         # There are some other optional parameters you can use to filter the results
         # We have a lightweight query language to filter results by request/response data
         # See https://rulebricks.com/docs/api-reference#tag/decisions/get/api/v1/decisions/query

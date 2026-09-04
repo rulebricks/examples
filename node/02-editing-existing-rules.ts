@@ -172,6 +172,9 @@ async function main() {
 
   // Check out the updated rule in your Rulebricks dashboard!
   // https://rulebricks.com/dashboard
+
+  // Clean up the example rule
+  await rb.assets.rules.delete({ id: rule.id });
 }
 
 main();

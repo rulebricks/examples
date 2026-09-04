@@ -10,12 +10,11 @@
     "02": "tsx 02-editing-existing-rules.ts",
     "03": "tsx 03-using-vocabulary.ts",
     "04": "tsx 04-adding-tests-to-rules.ts",
-    "05": "tsx 05-rule-creation-management.ts"
+    "05": "tsx 05-bulk-rule-administration.ts"
   },
   "dependencies": {
-    "@rulebricks/sdk": "^2.6.5",
-    "dotenv": "^16.4.7",
-    "node-fetch": "^3.3.2"
+    "@rulebricks/sdk": "^2.6.7",
+    "dotenv": "^16.4.7"
   },
   "devDependencies": {
     "@biomejs/biome": "1.9.4",

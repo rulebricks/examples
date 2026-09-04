@@ -1,34 +1,9 @@
-from rulebricks import Rulebricks
-from rulebricks.errors.bad_request_error import BadRequestError
-from rulebricks.forge.types.values import TypeMismatchError
-from rulebricks.forge import Rule, Vocabulary
+from rulebricks import BadRequestError, Rule, Rulebricks, Vocabulary
+from rulebricks.forge import TypeMismatchError
 from dotenv import load_dotenv
 from time import sleep
 
 import os
-
-
-def iter_vocabulary_values(client, **filters):
-    """Yield values from either legacy arrays or every paginated page."""
-    cursor = None
-    seen_cursors = set()
-    while True:
-        response = client.values.list(limit=1000, cursor=cursor, **filters)
-        if isinstance(response, list):
-            values = response
-            next_cursor = None
-        else:
-            values = getattr(response, "data", None) or []
-            next_cursor = getattr(response, "next_cursor", None)
-
-        yield from values
-        if not next_cursor:
-            break
-        if next_cursor in seen_cursors:
-            break
-        seen_cursors.add(next_cursor)
-        cursor = next_cursor
-
 
 if __name__ == "__main__":
     # Ensure RULEBRICKS_API_KEY is set in a local .env file
@@ -79,7 +54,6 @@ if __name__ == "__main__":
             "allowed_service_frequencies": ["monthly", "quarterly"],
         }
     )
-    sleep(5)
 
     # Now we can reference the vocabulary value in our rule
     rule.when(
@@ -106,12 +80,6 @@ if __name__ == "__main__":
     # Now let's create & publish the rule in our Rulebricks workspace
     rule.set_workspace(rb)
     rule.publish()
-
-    # Usage metadata shows which rules currently reference each vocabulary value.
-    print("\nVocabulary values with usage information:")
-    for value in iter_vocabulary_values(rb, include="usage"):
-        if value.name in {"max_deductible", "allowed_service_frequencies"}:
-            print(value.name, "is used by", len(value.usages or []), "rule(s)")
 
     # And let's solve the rule with some example data that matches the first condition
     request_under_1000_deductible = {
@@ -140,14 +108,16 @@ if __name__ == "__main__":
 
     # We can update the Vocabulary value programmatically at any time,
     # anywhere in your application, using our simple vocabulary API
-    rb.values.update(values={"max_deductible": 2001})
+    Vocabulary.set({"max_deductible": 2001})
 
     # Published rules, however, are pinned to the vocabulary they were
     # published with– every published version behaves exactly the same for
     # its entire lifetime, no matter how the vocabulary changes afterwards.
     # Our rule's published version still sees max_deductible = 1000,
     # so this request still recommends the PPO plan
-    outcome_pinned_version = rb.rules.solve(slug=rule.slug, version="1", request=request_ppo)
+    outcome_pinned_version = rb.rules.solve(
+        slug=rule.slug, version="1", request=request_ppo
+    )
     print(
         "\nEven though max_deductible is now 2001, the published version "
         "is pinned to the vocabulary it was published with, "
@@ -162,7 +132,9 @@ if __name__ == "__main__":
     # The latest version sees max_deductible = 2001, so the same request's
     # deductible preference of 2000 now falls under the max– and the rule
     # recommends the HSA plan
-    outcome_new_version = rb.rules.solve(slug=rule.slug, request=request_ppo)
+    outcome_new_version = rb.rules.solve(
+        slug=rule.slug, version="latest", request=request_ppo
+    )
     print(
         "\nAfter publishing a new version, the request's deductible "
         f"preference of {request_ppo['deductible_preference']} is under "
@@ -181,18 +153,11 @@ if __name__ == "__main__":
     print("\nExample error scenarios:")
     # Let's see what happens if we try to delete the Vocabulary value
     try:
-        target = next(
-            (
-                value
-                for value in iter_vocabulary_values(rb, name="max_deductible")
-                if value.name == "max_deductible"
-            ),
-            None,
+        # This delete is expected to fail, so skip automatic retries
+        rb.values.delete(
+            id=Vocabulary.get("max_deductible").id,
+            request_options={"max_retries": 0},
         )
-        target_id = target.id if target else None
-        if target_id:
-            # This delete is expected to fail, so skip automatic retries
-            rb.values.delete(id=target_id, request_options={"max_retries": 0})
     except BadRequestError as e:
         # We can't delete a Vocabulary value that is being used by a rule!
         # This makes sure your rules won't be broken by accidental deletions

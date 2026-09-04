@@ -1,5 +1,5 @@
 from rulebricks import Rulebricks
-from rulebricks.forge import Rule, RuleTest
+from rulebricks.forge import Rule, RulePublishError, RuleTest
 from dotenv import load_dotenv
 
 import os
@@ -114,7 +114,7 @@ if __name__ == "__main__":
     try:
         # This publish is expected to fail, so skip automatic retries
         rule.publish(request_options={"max_retries": 0})
-    except Exception as e:
+    except RulePublishError as e:
         # They're not allowed to!
         print(e)
 

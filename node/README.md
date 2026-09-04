@@ -32,5 +32,8 @@ To run any specific example, use any of the following shortcuts:
 npm run 01
 npm run 02
 npm run 03
-...
+npm run 04
+npm run 05
 ```
+
+Example 05 demonstrates bulk solving and basic rule administration.

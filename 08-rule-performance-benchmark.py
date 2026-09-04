@@ -84,6 +84,7 @@ def generate_test_cases(num_test_cases):
     test_case_ranges = {
         "age": (18, 80),
         "income": (50000, 250000),
+        "chronic_conditions": [True, False],
         "deductible_preference": (500, 5000),
         "medical_service_frequency": ["monthly", "quarterly", "annually"],
     }
@@ -107,7 +108,7 @@ if __name__ == "__main__":
     rule = build_example_rule()
     print(rule.to_table())
 
-    # Export the rule to a .rbx file that can be imported into Rulebricks manually
+    # Export the rule to a .rbm file that can be imported into Rulebricks manually
     # rule.export()
 
     # Or, import the rule directly into your Rulebricks workspace

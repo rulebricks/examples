@@ -1,4 +1,4 @@
-import { Rule, type Rulebricks, RulebricksClient } from "@rulebricks/sdk";
+import { Rule, RulebricksClient } from "@rulebricks/sdk";
 import "dotenv/config";
 
 // Initialize the Rulebricks client
@@ -118,7 +118,7 @@ async function main() {
     await rule.update();
 
     // The new rule should appear in your Rulebricks workspace if we list all rules
-    // console.log(await rb.assets.listRules({}, {}));
+    console.log(await rb.assets.rules.list());
 
     // The URL to edit the rule in the Rulebricks web app should work!
     console.log(rule.getEditorUrl());
@@ -134,13 +134,16 @@ async function main() {
       deductible_preference: 750,
       medical_service_frequency: "monthly",
     };
-    const testDataSolution = await rb.rules.solve({ slug: rule.slug, body: testData });
+    const testDataSolution = await rb.rules.solve({
+      slug: rule.slug,
+      body: testData,
+    });
     console.log(testDataSolution);
 
     // Delete the rule
     await rb.assets.rules.delete({
       id: rule.id,
-    } satisfies Rulebricks.assets.DeleteRuleRequest);
+    });
   } catch (error) {
     console.error("Error:", error);
     process.exit(1);

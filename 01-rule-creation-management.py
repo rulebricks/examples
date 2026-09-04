@@ -80,7 +80,7 @@ if __name__ == "__main__":
     rule = build_example_rule()
     print(rule.to_table())
 
-    # Export the rule to a .rbx file that can be imported into Rulebricks manually
+    # Export the rule to a .rbm file that can be imported into Rulebricks manually
     # rule.export()
 
     # Or, import the rule directly into your Rulebricks workspace

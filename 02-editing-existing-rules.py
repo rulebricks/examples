@@ -127,3 +127,6 @@ if __name__ == "__main__":
 
     # Check out the updated rule in your Rulebricks dashboard!
     # https://rulebricks.com/dashboard
+
+    # Clean up the example rule
+    rb.assets.rules.delete(id=rule.id)

@@ -1,7 +1,7 @@
 import {
   Rule,
+  RulePublishError,
   RuleTest,
-  type Rulebricks,
   RulebricksClient,
 } from "@rulebricks/sdk";
 import "dotenv/config";
@@ -64,7 +64,33 @@ function buildExampleRule() {
       estimated_premium: 2000,
     });
 
-  // PLACEHOLDER: Add remaining conditions similar to example 01
+  rule
+    .when({
+      age: age.greater_than(35),
+      income: income.greater_than(75000),
+      chronic_conditions: chronic.equals(false),
+      deductible_preference: deductible.greater_than(1000),
+      medical_service_frequency: frequency.equals("quarterly"),
+    })
+    .then({
+      recommended_plan: "PPO",
+      estimated_premium: 3000,
+    });
+
+  rule
+    .any({
+      age: age.greater_than(60),
+      income: income.greater_than(200000),
+      chronic_conditions: chronic.equals(false),
+    })
+    .then({
+      recommended_plan: "PPO",
+      estimated_premium: 2500,
+    });
+
+  rule.when({}).then({
+    recommended_plan: "Unknown",
+  });
 
   return rule;
 }
@@ -126,16 +152,20 @@ async function main() {
   try {
     // This publish is expected to fail, so skip automatic retries
     await rule.publish({ maxRetries: 0 });
-  } catch (e) {
-    // They're not allowed to!
-    console.log(e);
+  } catch (error) {
+    if (error instanceof RulePublishError) {
+      // They're not allowed to!
+      console.log(error instanceof Error ? error.message : String(error));
+    } else {
+      throw error;
+    }
   }
 
   // Let's clean up our workspace
   console.log("Cleaning up workspace...");
   await rb.assets.rules.delete({
     id: rule.id,
-  } satisfies Rulebricks.assets.DeleteRuleRequest);
+  });
 }
 
 main();

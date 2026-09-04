@@ -1,5 +1,10 @@
-import { Vocabulary, Rule, RulebricksClient } from "@rulebricks/sdk";
-import type { Rulebricks } from "@rulebricks/sdk";
+import {
+  Rule,
+  Rulebricks,
+  RulebricksClient,
+  TypeMismatchError,
+  Vocabulary,
+} from "@rulebricks/sdk";
 
 import "dotenv/config";
 
@@ -57,17 +62,13 @@ async function main() {
 
   // We might not have any vocabulary values created yet, so let's create them
   // If we wanted to, we could add a bunch of other vocabulary values here as well
-  // The update operation is an upsert operation, so it will create vocabulary values
+  // The set operation is an upsert, so it will create vocabulary values
   // if they don't exist, and update them if they do
-  await rb.values.update({
-    values: {
-      max_deductible: 1000,
-      allowed_service_frequencies: ["monthly", "quarterly"],
-    },
-  } satisfies Rulebricks.UpdateValuesRequest);
-
-  // Configure the Vocabulary module with our Rulebricks client
   Vocabulary.configure(rb);
+  await Vocabulary.set({
+    max_deductible: 1000,
+    allowed_service_frequencies: ["monthly", "quarterly"],
+  });
 
   // Now we can reference the vocabulary value in our rule
   rule
@@ -110,24 +111,6 @@ async function main() {
   rule.setWorkspace(rb);
   await rule.publish();
 
-  // Usage metadata shows which rules currently reference each vocabulary value.
-  console.log("\nVocabulary values with usage information:");
-
-  // Without a limit/cursor, small catalogs return a plain array
-  // Otherwise a { data, next_cursor } envelope is returned.
-  const valuesWithUsage = await rb.values.list({ include: "usage" });
-  const usageEntries = Array.isArray(valuesWithUsage)
-    ? valuesWithUsage
-    : valuesWithUsage.data;
-  for (const value of usageEntries) {
-    if (
-      value.name === "max_deductible" ||
-      value.name === "allowed_service_frequencies"
-    ) {
-      console.log(value.name, "is used by", value.usages?.length || 0, "rule(s)");
-    }
-  }
-
   // And let's solve the rule with some example data that matches the first condition
   const requestUnder1000Deductible = {
     age: 25,
@@ -147,7 +130,10 @@ async function main() {
     slug: rule.slug,
     body: requestUnder1000Deductible,
   });
-  const outcomePpo = await rb.rules.solve({ slug: rule.slug, body: requestPpo });
+  const outcomePpo = await rb.rules.solve({
+    slug: rule.slug,
+    body: requestPpo,
+  });
 
   // We can observe that our vocabulary value is being used
   // and respected by the rule
@@ -156,11 +142,7 @@ async function main() {
 
   // We can update the vocabulary value programmatically at any time,
   // anywhere in your application, using our simple vocabulary API
-  await rb.values.update({
-    values: {
-      max_deductible: 2001,
-    },
-  } satisfies Rulebricks.UpdateValuesRequest);
+  await Vocabulary.set({ max_deductible: 2001 });
 
   // Published rules, however, are pinned to the vocabulary they were
   // published with– every published version behaves exactly the same for
@@ -169,6 +151,7 @@ async function main() {
   // so this request still recommends the PPO plan
   const outcomePinnedVersion = await rb.rules.solve({
     slug: rule.slug,
+    version: "1",
     body: requestPpo,
   });
   console.log(
@@ -186,6 +169,7 @@ async function main() {
   // recommends the HSA plan
   const outcomeNewVersion = await rb.rules.solve({
     slug: rule.slug,
+    version: "latest",
     body: requestPpo,
   });
   console.log(
@@ -193,9 +177,8 @@ async function main() {
   );
   console.log(requestPpo, " => ", outcomeNewVersion);
 
-  // Every published version also stays addressable: append /<version>
-  // to the slug to target it directly, while the bare slug always
-  // solves the latest published version
+  // Every published version stays addressable, and "latest" explicitly
+  // targets the newest published version.
   const outcomeV1 = await rb.rules.solve({
     slug: rule.slug,
     version: "1",
@@ -203,6 +186,7 @@ async function main() {
   });
   const outcomeV2 = await rb.rules.solve({
     slug: rule.slug,
+    version: "latest",
     body: requestPpo,
   });
   console.log("\nSolving specific published versions:");
@@ -212,23 +196,18 @@ async function main() {
   console.log("\nExample error scenarios:");
   // Let's see what happens if we try to delete the vocabulary value
   try {
-    const values = await rb.values.list({ name: "max_deductible" });
-    const matches = Array.isArray(values) ? values : values.data;
-    const maxDeductibleId = matches[0].id;
-    if (maxDeductibleId) {
-      // This delete is expected to fail, so skip automatic retries
-      await rb.values.delete(
-        {
-          id: maxDeductibleId,
-        } satisfies Rulebricks.DeleteValuesRequest,
-        { maxRetries: 0 },
-      );
-      console.log("Cannot delete vocabulary value that is being used by a rule!");
+    // This delete is expected to fail, so skip automatic retries
+    await rb.values.delete(
+      { id: (await Vocabulary.get("max_deductible")).id },
+      { maxRetries: 0 },
+    );
+  } catch (error) {
+    if (error instanceof Rulebricks.BadRequestError) {
+      // Values referenced by a rule cannot be deleted accidentally.
+      console.log(error instanceof Error ? error.message : String(error));
+    } else {
+      throw error;
     }
-  } catch (e) {
-    // We can't delete a vocabulary value that is being used by a rule!
-    // This makes sure your rules won't be broken by accidental deletions
-    console.log(e);
   }
 
   // Let's see what happens if we try to use the vocabulary value
@@ -248,26 +227,25 @@ async function main() {
         recommended_plan: "HSA",
         estimated_premium: 2000,
       });
-  } catch (e) {
-    // The SDK will catch this error for you
-    // and let you know what went wrong
-    console.log(e);
+  } catch (error) {
+    if (error instanceof TypeMismatchError) {
+      console.log(error instanceof Error ? error.message : String(error));
+    } else {
+      throw error;
+    }
   }
 
   // Let's clean up our workspace
   // First delete any rules using the vocabulary value
   await rb.assets.rules.delete({
     id: rule.id,
-  } satisfies Rulebricks.assets.DeleteRuleRequest);
+  });
 
   // Then delete the vocabulary values
-  for (const valueName of [
-    "max_deductible",
-    "allowed_service_frequencies",
-  ]) {
+  for (const valueName of ["max_deductible", "allowed_service_frequencies"]) {
     await rb.values.delete({
       id: (await Vocabulary.get(valueName)).id,
-    } satisfies Rulebricks.DeleteValuesRequest);
+    });
   }
 }
 
