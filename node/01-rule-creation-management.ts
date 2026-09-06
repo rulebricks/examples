@@ -1,4 +1,4 @@
-import { Rule, RulebricksClient } from "@rulebricks/sdk";
+import { RbmManifest, Rule, RulebricksClient } from "@rulebricks/sdk";
 import "dotenv/config";
 
 // Initialize the Rulebricks client
@@ -111,6 +111,9 @@ async function main() {
     const rule = buildExampleRule();
     console.log(rule.toTable());
 
+    // A dependency-free draft can be exported locally as a canonical RBM manifest
+    await rule.toManifest().save("health-insurance-account-selector-draft.rbm");
+
     // Provide our configured workspace client to the Forge SDK
     rule.setWorkspace(rb);
 
@@ -125,6 +128,12 @@ async function main() {
 
     // Publish the rule to make it live
     await rule.publish();
+
+    // Server-backed export includes the published version and all dependencies
+    const publishedManifest = await RbmManifest.exportRule(rb, rule);
+    await publishedManifest.save(
+      "health-insurance-account-selector-published.rbm",
+    );
 
     // Let's try solving the rule with some test data!
     const testData = {

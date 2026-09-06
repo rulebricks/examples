@@ -1,4 +1,5 @@
 import {
+  RbmManifest,
   Rule,
   Rulebricks,
   RulebricksClient,
@@ -110,6 +111,10 @@ async function main() {
   // Now let's create & publish the rule in our Rulebricks workspace
   rule.setWorkspace(rb);
   await rule.publish();
+
+  // Server-backed export resolves and includes the referenced Vocabulary values
+  const manifest = await RbmManifest.exportRule(rb, rule);
+  await manifest.save("health-insurance-with-vocabulary.rbm");
 
   // And let's solve the rule with some example data that matches the first condition
   const requestUnder1000Deductible = {

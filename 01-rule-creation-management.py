@@ -1,4 +1,4 @@
-from rulebricks import Rulebricks
+from rulebricks import RbmManifest, Rulebricks
 from rulebricks.forge import Rule
 from dotenv import load_dotenv
 
@@ -80,10 +80,11 @@ if __name__ == "__main__":
     rule = build_example_rule()
     print(rule.to_table())
 
-    # Export the rule to a .rbm file that can be imported into Rulebricks manually
-    # rule.export()
+    # A dependency-free draft can be exported locally as a canonical RBM manifest
+    draft_manifest = RbmManifest.from_rule(rule)
+    draft_manifest.save("health-insurance-account-selector-draft.rbm")
 
-    # Or, import the rule directly into your Rulebricks workspace
+    # Import the rule directly into your Rulebricks workspace
     rb = Rulebricks(
         base_url=os.getenv("RULEBRICKS_ENVIRONMENT") or "https://rulebricks.com/api/v1",
         api_key=os.getenv("RULEBRICKS_API_KEY")
@@ -104,6 +105,10 @@ if __name__ == "__main__":
 
     # Publish the rule to make it live
     rule.publish()
+
+    # Server-backed export includes the published version and all dependencies
+    published_manifest = RbmManifest.export_rule(rb, rule)
+    published_manifest.save("health-insurance-account-selector-published.rbm")
 
     # Let's try solving the rule with some test data!
     test_data = {

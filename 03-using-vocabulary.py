@@ -1,4 +1,4 @@
-from rulebricks import BadRequestError, Rule, Rulebricks, Vocabulary
+from rulebricks import BadRequestError, RbmManifest, Rule, Rulebricks, Vocabulary
 from rulebricks.forge import TypeMismatchError
 from dotenv import load_dotenv
 from time import sleep
@@ -81,6 +81,10 @@ if __name__ == "__main__":
     rule.set_workspace(rb)
     rule.publish()
 
+    # Server-backed export resolves and includes the referenced Vocabulary values
+    manifest = RbmManifest.export_rule(rb, rule)
+    manifest.save("health-insurance-with-vocabulary.rbm")
+
     # And let's solve the rule with some example data that matches the first condition
     request_under_1000_deductible = {
         "age": 25,
@@ -161,7 +165,8 @@ if __name__ == "__main__":
     except BadRequestError as e:
         # We can't delete a Vocabulary value that is being used by a rule!
         # This makes sure your rules won't be broken by accidental deletions
-        print(e.body.error)
+        message = e.body.get("error", str(e)) if isinstance(e.body, dict) else str(e)
+        print(message)
 
     # Let's see what happens if we try to use the Vocabulary value
     # somewhere where its type doesn't match

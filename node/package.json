@@ -13,7 +13,7 @@
     "05": "tsx 05-bulk-rule-administration.ts"
   },
   "dependencies": {
-    "@rulebricks/sdk": "^2.6.7",
+    "@rulebricks/sdk": "^2.6.8",
     "dotenv": "^16.4.7"
   },
   "devDependencies": {
